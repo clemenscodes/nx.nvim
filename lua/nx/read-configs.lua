@@ -57,13 +57,8 @@ function _M.rf(fname, callback)
         end
 
         vim.loop.fs_close(fd, function()
-          local success, table = pcall(vim.json.decode, data)
-          if success then
-            callback(table, true)
-          else
-            console.error('Failed to decode JSON: ' .. fname)
-            callback(table, false)
-          end
+          local table = vim.json.decode(data)
+          callback(table, true)
         end)
       end)
     end)
@@ -86,7 +81,13 @@ end
 
 function _M.read_projects(callback)
   console.log 'Reading individual projects'
-  local projects = _G.nx.graph.graph.nodes or {}
+  local projects
+  if not _G.nx or not _G.nx.graph or not _G.nx.graph.graph then
+    console.log 'Nx graph was not found'
+    projects = {}
+  else
+    projects = _G.nx.graph.graph.nodes or {}
+  end
   local keys = utils.keys(projects)
   local count = #keys
   local loadedCount = 0
@@ -107,7 +108,7 @@ function _M.read_projects(callback)
   end
 end
 
----Reads workspace generators
+--- Reads workspace generators
 function _M.read_workspace_generators(callback)
   local gens = {}
 
@@ -159,13 +160,29 @@ function _M.read_workspace_generators(callback)
     end
   end
 
-  local projects = _G.nx.graph.graph.nodes or {}
+  local projects
+  if not _G.nx or not _G.nx.graph or not _G.nx.graph.graph then
+    console.log 'Nx graph was not found'
+    projects = {}
+  else
+    projects = _G.nx.graph.graph.nodes or {}
+  end
   for _, projectSchema in pairs(projects) do
     local path = projectSchema.data.root
     _M.rf(path .. '/package.json', function(f)
       local function handle_schematic_file(field)
-        if f[field] then
-          _M.rf(path .. '/' .. f[field], function(schematics)
+        if field then
+          _M.rf(path .. '/' .. field, function(schematics)
+            if not schematics then
+              console.log(
+                'No schematics found in '
+                .. path
+                .. '/'
+                .. field
+              )
+              return
+            end
+
             local possibleGeneratorNames =
             { 'generators', 'schematics' }
             for _, generators in pairs(possibleGeneratorNames) do
@@ -179,7 +196,23 @@ function _M.read_workspace_generators(callback)
                   _M.rf(
                     path .. '/' .. gen.schema,
                     function(schema)
-                      add_gen(gens, f.name, name, schema)
+                      if schema then
+                        add_gen(
+                          gens,
+                          f.name,
+                          name,
+                          schema
+                        )
+                      else
+                        console.log(
+                          'Error reading schema for '
+                          .. name
+                          .. ' in '
+                          .. path
+                          .. '/'
+                          .. gen.schema
+                        )
+                      end
 
                       loadedGenCount = loadedGenCount + 1
                     end
@@ -187,6 +220,14 @@ function _M.read_workspace_generators(callback)
                 end
 
                 -- If no generators found for this package, update loadedCount directly
+                if genCount == 0 then
+                  console.log(
+                    'No generators found in '
+                    .. path
+                    .. '/'
+                    .. field
+                  )
+                end
               end
             end
           end)
@@ -196,8 +237,9 @@ function _M.read_workspace_generators(callback)
       handle_schematic_file 'schematics'
       handle_schematic_file 'generators'
     end)
-    _G.nx.generators.workspace = gens
   end
+
+  _G.nx.generators.workspace = gens
 end
 
 function _M.read_project_graph(callback)
@@ -298,22 +340,17 @@ function _M.read_external_generators(callback)
                 for name, gen in pairs(schematics[generators]) do
                   genCount = genCount + 1
 
-                  if gen.schema then
-                    _M.rf(
-                      schematics_dir .. '/' .. gen.schema,
-                      function(schema)
-                        add_gen(value, name, schema)
+                  _M.rf(
+                    schematics_dir .. '/' .. gen.schema,
+                    function(schema)
+                      add_gen(value, name, schema)
 
-                        loadedGenCount = loadedGenCount
-                            + 1
-                        if
-                            loadedGenCount == genCount
-                        then
-                          maybe_continue()
-                        end
+                      loadedGenCount = loadedGenCount + 1
+                      if loadedGenCount == genCount then
+                        maybe_continue()
                       end
-                    )
-                  end
+                    end
+                  )
                 end
 
                 -- If no generators found for this package, update loadedCount directly
@@ -359,14 +396,14 @@ function _M.read_nx_root(callback)
         console.log 'Read package.json completed.'
         _M.read_projects(function()
           console.log 'Read projects completed.'
-          _M.read_workspace_generators(function()
-            console.log 'Read workspace generators completed.'
-            _M.read_external_generators(function()
-              console.log 'Read external generators completed.'
-              console.log '----------------'
-              callback()
-            end)
+          -- _M.read_workspace_generators(function()
+          -- 	console.log 'Read workspace generators completed.'
+          _M.read_external_generators(function()
+            console.log 'Read external generators completed.'
+            console.log '----------------'
+            callback()
           end)
+          -- end)
         end)
       end)
     end)

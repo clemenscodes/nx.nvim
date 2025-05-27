@@ -40,12 +40,19 @@ local make_entry = function(internal_state)
 end
 
 local get_enum_values_from_form = function(form)
+  local projects
+  if not _G.nx or not _G.nx.graph or not _G.nx.graph.graph then
+    console.log 'Nx graph was not found'
+    projects = {}
+  else
+    projects = _G.nx.graph.graph.nodes or {}
+  end
   local enum_value = form.enum
       or (
         form['$default'] ~= nil
         and form['$default']['$source'] == 'projectName'
         and _G.nx.graph
-        and utils.keys(_G.nx.graph.graph.nodes)
+        and utils.keys(projects)
       )
   return enum_value
 end

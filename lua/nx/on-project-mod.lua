@@ -8,7 +8,15 @@ local function on_project_mod()
   local actions = {}
   local targets = {}
 
-  for key, node in pairs(_G.nx.graph.graph.nodes or {}) do
+
+  local projects
+  if not _G.nx or not _G.nx.graph or not _G.nx.graph.graph then
+    console.log 'Nx graph was not found'
+    projects = {}
+  else
+    projects = _G.nx.graph.graph.nodes or {}
+  end
+  for key, node in pairs(projects) do
     local proj = node.data
     console.log('Handeling node ' .. key .. ' with:')
     console.log(proj)
