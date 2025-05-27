@@ -193,30 +193,35 @@ function _M.read_workspace_generators(callback)
                 for name, gen in pairs(schematics[generators]) do
                   genCount = genCount + 1
 
-                  _M.rf(
-                    path .. '/' .. gen.schema,
-                    function(schema)
-                      if schema then
-                        add_gen(
-                          gens,
-                          f.name,
-                          name,
-                          schema
-                        )
-                      else
-                        console.log(
-                          'Error reading schema for '
-                          .. name
-                          .. ' in '
-                          .. path
-                          .. '/'
-                          .. gen.schema
-                        )
-                      end
+                  if gen.schema then
+                    _M.rf(
+                      path .. '/' .. gen.schema,
+                      function(schema)
+                        if schema then
+                          add_gen(
+                            gens,
+                            f.name,
+                            name,
+                            schema
+                          )
+                        else
+                          console.log(
+                            'Error reading schema for '
+                            .. name
+                            .. ' in '
+                            .. path
+                            .. '/'
+                            .. gen.schema
+                          )
+                        end
 
-                      loadedGenCount = loadedGenCount + 1
-                    end
-                  )
+                        loadedGenCount = loadedGenCount + 1
+                      end
+                    )
+                  else
+                    console.log('Missing schema field for generator ' .. name .. ' in ' .. path)
+                    loadedGenCount = loadedGenCount + 1
+                  end
                 end
 
                 -- If no generators found for this package, update loadedCount directly
@@ -340,17 +345,25 @@ function _M.read_external_generators(callback)
                 for name, gen in pairs(schematics[generators]) do
                   genCount = genCount + 1
 
-                  _M.rf(
-                    schematics_dir .. '/' .. gen.schema,
-                    function(schema)
-                      add_gen(value, name, schema)
+                  if gen.schema then
+                    _M.rf(
+                      schematics_dir .. '/' .. gen.schema,
+                      function(schema)
+                        add_gen(value, name, schema)
 
-                      loadedGenCount = loadedGenCount + 1
-                      if loadedGenCount == genCount then
-                        maybe_continue()
+                        loadedGenCount = loadedGenCount + 1
+                        if loadedGenCount == genCount then
+                          maybe_continue()
+                        end
                       end
+                    )
+                  else
+                    console.log('Missing schema field for generator ' .. name .. ' in ' .. schematics_dir)
+                    loadedGenCount = loadedGenCount + 1
+                    if loadedGenCount == genCount then
+                      maybe_continue()
                     end
-                  )
+                  end
                 end
 
                 -- If no generators found for this package, update loadedCount directly
