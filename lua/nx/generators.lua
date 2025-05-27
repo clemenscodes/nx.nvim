@@ -16,55 +16,55 @@ local utils = require 'nx.utils'
 ---@param entry table
 ---@return table
 local make_entry = function(entry)
-	local x = entry.package .. ' ' .. entry.name
-	return {
-		value = entry,
-		display = x,
-		ordinal = x,
-	}
+  local x = entry.package .. ' ' .. entry.name
+  return {
+    value = entry,
+    display = x,
+    ordinal = x,
+  }
 end
 
 ---Run a given generator
 ---@param generator Generator
 _M.run_generator = function(generator)
-	console.log 'Executing generator'
-	console.log(generator)
+  console.log 'Executing generator'
+  console.log(generator)
 
-	local initial_config = {}
-	local accessor = generator.package .. ':' .. generator.name
+  local initial_config = {}
+  local accessor = generator.package .. ':' .. generator.name
 
-	if _G.nx.nx.generators and _G.nx.nx.generators[accessor] ~= nil then
-		initial_config = _G.nx.nx.generators[accessor]
-	end
-	if
-		_G.nx.nx.generators
-		and _G.nx.nx.generators[generator.package] ~= nil
-		and _G.nx.nx.generators[generator.package][generator.name] ~= nil
-	then
-		initial_config = _G.nx.nx.generators[generator.package][generator.name]
-	end
+  if _G.nx.nx.generators and _G.nx.nx.generators[accessor] ~= nil then
+    initial_config = _G.nx.nx.generators[accessor]
+  end
+  if
+      _G.nx.nx.generators
+      and _G.nx.nx.generators[generator.package] ~= nil
+      and _G.nx.nx.generators[generator.package][generator.name] ~= nil
+  then
+    initial_config = _G.nx.nx.generators[generator.package][generator.name]
+  end
 
-	console.log('Loading initial_config for ' .. accessor)
-	console.log(initial_config)
+  console.log('Loading initial_config for ' .. accessor)
+  console.log(initial_config)
 
-	local schema = utils.deepcopy(generator.schema)
+  local schema = utils.deepcopy(generator.schema)
 
-	if schema.type == 'object' then
-		console.log 'HERE'
-		schema.properties.dryRun = { type = 'boolean' }
-	end
+  if schema.type == 'object' then
+    console.log 'HERE'
+    schema.properties.dryRun = { type = 'boolean' }
+  end
 
-	_G.nx.form_renderer(schema, accessor, function(form_result)
-		local s = _G.nx.nx_cmd_root .. ' ' .. generator.run_cmd
+  _G.nx.form_renderer(schema, accessor, function(form_result)
+    local s = _G.nx.nx_cmd_root .. ' ' .. generator.run_cmd
 
-		for key, value in pairs(form_result) do
-			if value ~= nil then
-				s = s .. ' --' .. key .. '=' .. tostring(value)
-			end
-		end
+    for key, value in pairs(form_result) do
+      if value ~= nil then
+        s = s .. ' --' .. key .. '=' .. tostring(value)
+      end
+    end
 
-		_G.nx.command_runner(s)
-	end, initial_config)
+    _G.nx.command_runner(s)
+  end, initial_config)
 end
 ---Constructs a generator builder with a source generator
 ---
@@ -73,58 +73,58 @@ end
 ---
 ---@return function
 local generator_builder = function(source)
-	return function(opts)
-		opts = opts or {}
+  return function(opts)
+    opts = opts or {}
 
-		pickers
-			.new(opts, {
-				prompt_title = 'Generators',
-				finder = finders.new_table {
-					results = source(),
-					entry_maker = make_entry,
-				},
-				sorter = conf.generic_sorter(opts),
-				attach_mappings = function(prompt_bufnr, map)
-					actions.select_default:replace(function()
-						actions.close(prompt_bufnr)
-						local selection =
-							action_state.get_selected_entry().value
+    pickers
+        .new(opts, {
+          prompt_title = 'Generators',
+          finder = finders.new_table {
+            results = source(),
+            entry_maker = make_entry,
+          },
+          sorter = conf.generic_sorter(opts),
+          attach_mappings = function(prompt_bufnr)
+            actions.select_default:replace(function()
+              actions.close(prompt_bufnr)
+              local selection =
+                  action_state.get_selected_entry().value
 
-						_M.run_generator(selection)
-					end)
-					return true
-				end,
-			})
-			:find()
-	end
+              _M.run_generator(selection)
+            end)
+            return true
+          end,
+        })
+        :find()
+  end
 end
 
 ---Prompts workspace generators
 ---
 ---@type function
 _M.workspace_generators = generator_builder(function()
-	return _G.nx.generators.workspace
+  return _G.nx.generators.workspace
 end)
 
 ---Prompts external generators
 ---
 ---@type function
 _M.external_generators = generator_builder(function()
-	return _G.nx.generators.external
+  return _G.nx.generators.external
 end)
 
 ---Prompts generators
 ---
 ---@type function
 _M.generators = generator_builder(function()
-	local x = {}
-	for _, value in ipairs(_G.nx.generators.external) do
-		table.insert(x, value)
-	end
-	for _, value in ipairs(_G.nx.generators.workspace) do
-		table.insert(x, value)
-	end
-	return x
+  local x = {}
+  for _, value in ipairs(_G.nx.generators.external) do
+    table.insert(x, value)
+  end
+  for _, value in ipairs(_G.nx.generators.workspace) do
+    table.insert(x, value)
+  end
+  return x
 end)
 
 return _M
