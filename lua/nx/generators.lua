@@ -47,6 +47,9 @@ _M.run_generator = function(generator)
   console.log('Loading initial_config for ' .. accessor)
   console.log(initial_config)
 
+  if not generator or not generator.schema then
+    return
+  end
   local schema = utils.deepcopy(generator.schema)
 
   if schema.type == 'object' then
